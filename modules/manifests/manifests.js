@@ -6,6 +6,7 @@ var fetchUrl = require('../../config').FetchUrl;
 
 class CreateFlightManifest extends React.Component {
   componentDidMount(){
+    
     return fetch(fetchUrl+'/airplanes')
       .then((response) => response.json())
       .then((responseJson) => {
@@ -111,12 +112,11 @@ class CreateFlightManifest extends React.Component {
     }
 
     if (errors == false) {
-      console.log(this.state);
       this.updateAirplane();
       this.createManifest();
     }
   }
-  
+
   createManifest() {
     const {navigate} = this.props.navigation;
     fetch(fetchUrl+'/manifests', {
@@ -172,7 +172,6 @@ class CreateFlightManifest extends React.Component {
 
           dataSource: responseJson,
         }, function(){
-          console.log(responseJson);
           alert('Airplane created successfully!');
           navigate('SeeAllAirplanes');
         });
@@ -196,7 +195,10 @@ class CreateFlightManifest extends React.Component {
           style={{height: 50, width: 250}}
           onValueChange={(itemValue, itemIndex) =>
             this.setState({pilot: itemValue})
-          }>
+          }
+          keyExtractor={(id, index) => index.toString()}
+
+          >
           <Picker.Item label="Select a Pilot" value="none" />
 
           {
@@ -215,7 +217,9 @@ class CreateFlightManifest extends React.Component {
           onValueChange={(itemValue, itemIndex) =>
             this.setState({airplane: itemValue, tachstart: itemValue.tachtime, tachstop: itemValue.tachtime})
 
-          }>
+          }
+          keyExtractor={(id, index) => index.toString()}
+          >
           <Picker.Item label="Select an Airplane" value="none" />
 
           {

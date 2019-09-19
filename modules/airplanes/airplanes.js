@@ -7,6 +7,7 @@ var fetchUrl = require('../../config').FetchUrl;
 class CreateNewAirplane extends React.Component {
   constructor(props) {
     super(props);
+    console.log(this.props);
     this.state = {aircraftstatus: '',
                   acname: '',
                   actype: '',
@@ -705,6 +706,8 @@ class SeeAllAirplanes extends React.Component {
                 </View>
               </View>
             }
+            keyExtractor={(id, index) => index.toString()}
+
           />
           <Button
             title="Create New Airplane!"

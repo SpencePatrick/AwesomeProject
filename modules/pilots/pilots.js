@@ -1,27 +1,71 @@
 import React from 'react';
-import { FlatList, Button, TextInput, ActivityIndicator, Text, Picker, ScrollView, View, StyleSheet  } from 'react-native';
+import { FlatList, TextInput, ActivityIndicator, Text, Picker, ScrollView, View, StyleSheet, AsyncStorage  } from 'react-native';
 import {createStackNavigator, createAppContainer} from 'react-navigation';
+import { Icon, CheckBox, Button } from 'react-native-elements';
+
 var fetchUrl = require('../../config').FetchUrl;
 
 
 
 class CreateNewPilot extends React.Component {
+  static navigationOptions = {
+    title: 'Create New Pilot',
+  };
+  componentDidMount() {
+    const getUserId = async () => {
+
+      let auth_token = '';
+      let permissions = '';
+      try {
+        auth_token = await AsyncStorage.getItem('Auth_Token') || 'none';
+        permissions = await AsyncStorage.getItem('Permissions') || 'none';
+      } catch (error) {
+        // Error retrieving data
+        console.log(error.message);
+      }
+      this.setState({
+        token: auth_token,
+        permissions: permissions,
+      });
+      if (auth_token != 'none') {
+        this.setState({'tokenmatch': true})
+      }
+      return auth_token;
+    }
+    getUserId();
+  }
   constructor(props) {
     super(props);
+
     this.state = {name: '',
                   email: '',
                   title: '',
-                  cert: '',
+                  certificatetype: '',
                   certnumber: '',
                   medicalclass: '',
                   faasedue: '',
                   faamedue: '',
                   faainstdue: '',
+                  faainsttype: '',
                   opsapproved: '',
                   acapproved: '',
-                  daycurrent: '',
-                  nightcurrent: '',
-                  checkairmandue: ''
+                  checkairmandue: '',
+                  me: false,
+                  se: true,
+                  ifr: false,
+                  vfr: false,
+                  c172: false,
+                  c180: false,
+                  c206: false,
+                  c210: false,
+                  c340: false,
+                  asel: false,
+                  amel: false,
+                  cfi: false,
+                  cfii: false,
+                  atp: false,
+                  comm: false,
+                  mel: false,
                 };
   }
   // validate data then fetch post
@@ -51,30 +95,68 @@ class CreateNewPilot extends React.Component {
       errors = true;
       alert('You must fill out the Medical Due Date');
     }
-    if (this.state.faasedue == '') {
+    if (this.state.ifr == false && this.state.vfr == false) {
       errors = true;
-      alert('You must fill out the FAA SE Due');
+      alert('You must select at least one operations approved for this pilot.');
     }
-    if (this.state.faamedue == '') {
-      errors = true;
-      alert('You must fill out the FAA ME Due');
+    let certtype = '';
+    if(this.state.asel) {
+      certtype += '|ASEL'
     }
-    if (this.state.faainstdue == '') {
-      errors = true;
-      alert('You must fill out the FAA Inst Due');
+    if(this.state.AMEL) {
+      certtype += '|AMEL'
     }
-    if (this.state.opsapproved == '') {
-      errors = true;
-      alert('You must fill out the 135 Operations Approved');
+    if(this.state.atp) {
+      certtype += '|ATP'
     }
-    if (this.state.acapproved == '') {
-      errors = true;
-      alert('You must fill out the Aircraft Approved');
+    if(this.state.comm) {
+      certtype += '|COMM'
     }
-    if (this.state.checkairmandue == '') {
-      errors = true;
-      alert('You must fill out the Check Airman Due');
+    if(this.state.mei) {
+      certtype += '|MEI'
     }
+    if(this.state.cfi) {
+      certtype += '|CFI'
+    }
+    if(this.state.cfii) {
+      certtype += '|CFII'
+    }
+    certtype = certtype.trimLeft('|');
+    this.setState({certificatetype: certtype});
+    let opsapproved = '';
+    if (this.state.ifr) {
+      opsapproved += ' IFR,';
+    }
+    if (this.state.vfr) {
+      opsapproved += ' VFR,';
+    }
+    opsapproved = opsapproved.trimRight(',').trimLeft(' ');
+    this.setState({opsapproved: opsapproved});
+    let aircraftstring;
+    if (this.state.c172) {
+      aircraftstring += ' 172,';
+    }
+    if (this.state.c180) {
+      aircraftstring += ' 180,';
+    }
+    if (this.state.c206) {
+      aircraftstring += ' 206,';
+    }
+    if (this.state.c340) {
+      aircraftstring += ' 340,';
+    }
+    aircraftstring = aircraftstring.trimRight(',').trimLeft(' ');
+    this.setState({acapproved: aircraftstring});
+    let insttype = '';
+    if (this.state.me) {
+      insttype = 'ME';
+    }
+    if (this.state.se) {
+      insttype = 'SE';
+    }
+    this.setState({faainsttype: insttype});
+
+
 
     if (errors == false) {
       this.createPilot();
@@ -82,23 +164,24 @@ class CreateNewPilot extends React.Component {
   }
 
   createPilot() {
-
     fetch(fetchUrl+'/pilots', {
         method: 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
+          'x-access-token': this.state.token,
         },
         body: JSON.stringify({
           name: this.state.name,
           email: this.state.email,
           title: this.state.title,
-          cert: this.state.cert,
+          cert: this.state.certificatetype,
           certnumber: this.state.certnumber,
           medicalclass: this.state.medicalclass,
           faasedue: this.state.faasedue,
           faamedue: this.state.faamedue,
           faainstdue: this.state.faainstdue,
+          faainsttype: this.state.faainsttype,
           opsapproved: this.state.opsapproved,
           acapproved: this.state.acapproved,
           daycurrent: this.state.daycurrent,
@@ -108,11 +191,11 @@ class CreateNewPilot extends React.Component {
       })
       .then((response) => response.json())
       .then((responseJson) => {
+        console.log(responseJson);
         this.setState({
 
           dataSource: responseJson,
         }, function(){
-          console.log(responseJson);
           alert('Pilot created successfully!');
         });
 
@@ -157,12 +240,37 @@ class CreateNewPilot extends React.Component {
         <Text>
           Certificate Type:
         </Text>
-        <TextInput
-          style={{height: 40}}
-          placeholder="i.e. AMEL/ASEL CFI"
-          onChangeText ={(cert) => this.setState({cert})}
-          value={this.state.cert}
+        <CheckBox
+          title='ASEL'
+          checked={this.state.asel}
+          onPress={() => this.setState({asel: !this.state.asel})}
         />
+        <CheckBox
+          title='AMEL'
+          checked={this.state.amel}
+          onPress={() => this.setState({amel: !this.state.amel})}
+        />
+        <CheckBox
+          title='CFI'
+          checked={this.state.cfi}
+          onPress={() => this.setState({cfi: !this.state.cfi})}
+        />
+        <CheckBox
+          title='CFII'
+          checked={this.state.cfii}
+          onPress={() => this.setState({cfii: !this.state.cfii})}
+        />
+        <CheckBox
+          title='ATP'
+          checked={this.state.atp}
+          onPress={() => this.setState({atp: !this.state.atp})}
+        />
+        <CheckBox
+          title='COMM'
+          checked={this.state.comm}
+          onPress={() => this.setState({comm: !this.state.comm})}
+        />
+
         <Text>
           Certificate Number:
         </Text>
@@ -220,57 +328,71 @@ class CreateNewPilot extends React.Component {
         <Text>
           FAA Inst Type:
         </Text>
-        <Picker
-          selectedValue={this.state.faainstdue}
-          style={{height: 50, width: 100}}
-          onValueChange={(itemValue, itemIndex) =>
-            this.setState({faainstdue: itemValue})
-          }>
-          <Picker.Item label="ME" value="ME" />
-          <Picker.Item label="SE" value="SE" />
-        </Picker>
+        <CheckBox
+          title='Multi'
+          checked={this.state.me}
+          onPress={() => this.setState({me: !this.state.me, se: !this.state.se})}
+        />
+        <CheckBox
+          title='Single'
+          checked={this.state.se}
+          onPress={() => this.setState({se: !this.state.se, me: !this.state.me})}
+        />
         <Text>
           135 Operations Approved:
         </Text>
-        <TextInput
-          style={{height: 40}}
-          placeholder="i.e. IFR, VFR"
-          onChangeText ={(opsapproved) => this.setState({opsapproved})}
-          value={this.state.opsapproved}
+
+        <CheckBox
+          title='IFR'
+          checked={this.state.ifr}
+          onPress={() => this.setState({ifr: !this.state.ifr})}
+        />
+        <CheckBox
+          title='VFR'
+          checked={this.state.vfr}
+          onPress={() => this.setState({vfr: !this.state.vfr})}
         />
         <Text>
           Aircraft Approved:
         </Text>
-        <TextInput
-          style={{height: 40}}
-          placeholder="i.e. 340, 210, 206, 180, 172"
-          onChangeText ={(acapproved) => this.setState({acapproved})}
-          value={this.state.acapproved}
+        <CheckBox
+          title='C172'
+          checked={this.state.c172}
+          onPress={() => this.setState({c172: !this.state.c172})}
+        />
+        <CheckBox
+          title='C180'
+          checked={this.state.c180}
+          onPress={() => this.setState({c180: !this.state.c180})}
+        />
+        <CheckBox
+          title='C206'
+          checked={this.state.c206}
+          onPress={() => this.setState({c206: !this.state.c206})}
+        />
+        <CheckBox
+          title='C210'
+          checked={this.state.c210}
+          onPress={() => this.setState({c210: !this.state.c210})}
+        />
+        <CheckBox
+          title='C340'
+          checked={this.state.c340}
+          onPress={() => this.setState({c340: !this.state.c340})}
         />
         <Text>
-          Day Currency:
+          Currency:
         </Text>
-        <Picker
-          selectedValue={this.state.daycurrent}
-          style={{height: 50, width: 100}}
-          onValueChange={(itemValue, itemIndex) =>
-            this.setState({daycurrent: itemValue})
-          }>
-          <Picker.Item label="Yes" value="true" />
-          <Picker.Item label="No" value="false" />
-        </Picker>
-        <Text>
-          Night Currency:
-        </Text>
-        <Picker
-          selectedValue={this.state.nightcurrent}
-          style={{height: 50, width: 100}}
-          onValueChange={(itemValue, itemIndex) =>
-            this.setState({nightcurrent: itemValue})
-          }>
-          <Picker.Item label="Yes" value="true" />
-          <Picker.Item label="No" value="false" />
-        </Picker>
+        <CheckBox
+          title='Day Current'
+          checked={this.state.daycurrent}
+          onPress={() => this.setState({daycurrent: !this.state.daycurrent})}
+        />
+        <CheckBox
+          title='Night Current'
+          checked={this.state.nightcurrent}
+          onPress={() => this.setState({nightcurrent: !this.state.nightcurrent})}
+        />
         <Text>
           Check Airman Due:
         </Text>
@@ -295,37 +417,66 @@ class CreateNewPilot extends React.Component {
 }
 
 class UpdatePilot extends React.Component {
+  static navigationOptions = {
+    title: 'Update Pilot',
+  };
   componentDidMount(){
 
     const {params} = this.props.navigation.state;
-    //
-    // var url = '192.168.1.6:3000/pilots';
-    // console.log(url);
+
     return fetch(fetchUrl+'/pilots/'+params.id, {
         method: 'GET',
 
       })
       .then((response) => response.json())
       .then((responseJson) => {
-
+        console.log(responseJson);
         this.setState({
           name: responseJson.name,
           email: responseJson.email,
           title: responseJson.title,
-          cert: responseJson.cert,
+          certificatetype: responseJson.cert,
           certnumber: responseJson.certnumber,
           medicaldue: responseJson.medicaldue,
           medicalclass: responseJson.medicalclass,
           faasedue: responseJson.faasedue,
           faamedue: responseJson.faamedue,
           faainstdue: responseJson.faainstdue,
+          faainsttype: responseJson.faainsttype,
           opsapproved: responseJson.opsapproved,
           acapproved: responseJson.acapproved,
           daycurrent: responseJson.daycurrent,
           nightcurrent: responseJson.nightcurrent,
-          checkairmandue: responseJson.checkairmandue
-
+          checkairmandue: responseJson.checkairmandue,
+          ifr: responseJson.opsapproved.includes('IFR'),
+          vfr: responseJson.opsapproved.includes('VFR'),
+          c172: responseJson.acapproved.includes('172'),
+          c180: responseJson.acapproved.includes('180'),
+          c206: responseJson.acapproved.includes('206'),
+          c210: responseJson.acapproved.includes('210'),
+          c340: responseJson.acapproved.includes('340'),
+          asel: responseJson.cert.includes('ASEL'),
+          amel: responseJson.cert.includes('AMEL'),
+          cfi: responseJson.cert.includes('CFI'),
+          cfii: responseJson.cert.includes('CFII'),
+          atp: responseJson.cert.includes('ATP'),
+          comm: responseJson.cert.includes('COMM'),
+          mel: responseJson.cert.includes('MEL'),
         });
+        if (responseJson.faainsttype) {
+          this.setState({
+            me: responseJson.faainsttype.includes('ME'),
+            se: responseJson.faainsttype.includes('SE'),
+          });
+
+        } else {
+          this.setState({
+            me: false,
+            se: true,
+          });
+        }
+
+
       })
       .catch((error) =>{
         console.error(error);
@@ -338,7 +489,7 @@ class UpdatePilot extends React.Component {
     this.state = {name: '',
                   email: '',
                   title: '',
-                  cert: '',
+                  certificatetype: '',
                   certnumber: '',
                   medicaldue: '',
                   medicalclass: '',
@@ -349,7 +500,23 @@ class UpdatePilot extends React.Component {
                   acapproved: '',
                   daycurrent: '',
                   nightcurrent: '',
-                  checkairmandue: ''
+                  checkairmandue: '',
+                  me: false,
+                  se: true,
+                  ifr: false,
+                  vfr: false,
+                  c172: false,
+                  c180: false,
+                  c206: false,
+                  c210: false,
+                  c340: false,
+                  asel: false,
+                  amel: false,
+                  cfi: false,
+                  cfii: false,
+                  atp: false,
+                  comm: false,
+                  mel: false,
                 };
   }
   // validate data then fetch post
@@ -379,33 +546,70 @@ class UpdatePilot extends React.Component {
       errors = true;
       alert('You must fill out the Medical Due Date');
     }
-    if (this.state.faasedue == '') {
+    if (this.state.ifr == false && this.state.vfr == false) {
       errors = true;
-      alert('You must fill out the FAA SE Due');
+      alert('You must select at least one operations approved for this pilot.');
     }
-    if (this.state.faamedue == '') {
-      errors = true;
-      alert('You must fill out the FAA ME Due');
+    let certtype = '';
+    if(this.state.asel) {
+      certtype += '|ASEL'
     }
-    if (this.state.faainstdue == '') {
-      errors = true;
-      alert('You must fill out the FAA Inst Due');
+    if(this.state.amel) {
+      certtype += '|AMEL'
     }
-    if (this.state.opsapproved == '') {
-      errors = true;
-      alert('You must fill out the 135 Operations Approved');
+    if(this.state.atp) {
+      certtype += '|ATP'
     }
-    if (this.state.acapproved == '') {
-      errors = true;
-      alert('You must fill out the Aircraft Approved');
+    if(this.state.comm) {
+      certtype += '|COMM'
     }
-    if (this.state.checkairmandue == '') {
-      errors = true;
-      alert('You must fill out the Check Airman Due');
+    if(this.state.mei) {
+      certtype += '|MEI'
     }
+    if(this.state.cfi) {
+      certtype += '|CFI'
+    }
+    if(this.state.cfii) {
+      certtype += '|CFII'
+    }
+    certtype = certtype.trimLeft('|');
+    this.setState({certificatetype: certtype});
+    let opsapproved = '';
+    if (this.state.ifr) {
+      opsapproved += ' IFR,';
+    }
+    if (this.state.vfr) {
+      opsapproved += ' VFR,';
+    }
+    opsapproved = opsapproved.trimRight(',').trimLeft(' ');
+    this.setState({opsapproved: opsapproved});
+    let aircraftstring;
+    if (this.state.c172) {
+      aircraftstring += ' 172,';
+    }
+    if (this.state.c180) {
+      aircraftstring += ' 180,';
+    }
+    if (this.state.c206) {
+      aircraftstring += ' 206,';
+    }
+    if (this.state.c340) {
+      aircraftstring += ' 340,';
+    }
+    aircraftstring = aircraftstring.trimRight(',').trimLeft(' ');
+    this.setState({acapproved: aircraftstring});
+    let insttype = '';
+    if (this.state.me) {
+      insttype = 'ME';
+    }
+    if (this.state.se) {
+      insttype = 'SE';
+    }
+    this.setState({faainsttype: insttype});
+
+
 
     if (errors == false) {
-      console.log(this.state);
       this.createPilot();
     }
   }
@@ -422,7 +626,7 @@ class UpdatePilot extends React.Component {
           name: this.state.name,
           email: this.state.email,
           title: this.state.title,
-          cert: this.state.cert,
+          cert: this.state.certificatetype,
           certnumber: this.state.certnumber,
           medicaldue: this.state.medicaldue,
           medicalclass: this.state.medicalclass,
@@ -441,7 +645,6 @@ class UpdatePilot extends React.Component {
         this.setState({
           dataSource: responseJson,
         }, function(){
-          console.log(responseJson);
           alert('Pilot updated successfully!');
         });
 
@@ -486,12 +689,37 @@ class UpdatePilot extends React.Component {
         <Text>
           Certificate Type:
         </Text>
-        <TextInput
-          style={{height: 40}}
-          placeholder="i.e. AMEL/ASEL CFI"
-          onChangeText ={(cert) => this.setState({cert})}
-          value={this.state.cert}
+        <CheckBox
+          title='ASEL'
+          checked={this.state.asel}
+          onPress={() => this.setState({asel: !this.state.asel})}
         />
+        <CheckBox
+          title='AMEL'
+          checked={this.state.amel}
+          onPress={() => this.setState({amel: !this.state.amel})}
+        />
+        <CheckBox
+          title='CFI'
+          checked={this.state.cfi}
+          onPress={() => this.setState({cfi: !this.state.cfi})}
+        />
+        <CheckBox
+          title='CFII'
+          checked={this.state.cfii}
+          onPress={() => this.setState({cfii: !this.state.cfii})}
+        />
+        <CheckBox
+          title='ATP'
+          checked={this.state.atp}
+          onPress={() => this.setState({atp: !this.state.atp})}
+        />
+        <CheckBox
+          title='COMM'
+          checked={this.state.comm}
+          onPress={() => this.setState({comm: !this.state.comm})}
+        />
+
         <Text>
           Certificate Number:
         </Text>
@@ -549,57 +777,71 @@ class UpdatePilot extends React.Component {
         <Text>
           FAA Inst Type:
         </Text>
-        <Picker
-          selectedValue={this.state.faainstdue}
-          style={{height: 50, width: 100}}
-          onValueChange={(itemValue, itemIndex) =>
-            this.setState({faainstdue: itemValue})
-          }>
-          <Picker.Item label="ME" value="ME" />
-          <Picker.Item label="SE" value="SE" />
-        </Picker>
+        <CheckBox
+          title='Multi'
+          checked={this.state.me}
+          onPress={() => this.setState({me: !this.state.me, se: !this.state.se})}
+        />
+        <CheckBox
+          title='Single'
+          checked={this.state.se}
+          onPress={() => this.setState({se: !this.state.se, me: !this.state.me})}
+        />
         <Text>
           135 Operations Approved:
         </Text>
-        <TextInput
-          style={{height: 40}}
-          placeholder="i.e. IFR, VFR"
-          onChangeText ={(opsapproved) => this.setState({opsapproved})}
-          value={this.state.opsapproved}
+
+        <CheckBox
+          title='IFR'
+          checked={this.state.ifr}
+          onPress={() => this.setState({ifr: !this.state.ifr})}
+        />
+        <CheckBox
+          title='VFR'
+          checked={this.state.vfr}
+          onPress={() => this.setState({vfr: !this.state.vfr})}
         />
         <Text>
           Aircraft Approved:
         </Text>
-        <TextInput
-          style={{height: 40}}
-          placeholder="i.e. 340, 210, 206, 180, 172"
-          onChangeText ={(acapproved) => this.setState({acapproved})}
-          value={this.state.acapproved}
+        <CheckBox
+          title='C172'
+          checked={this.state.c172}
+          onPress={() => this.setState({c172: !this.state.c172})}
+        />
+        <CheckBox
+          title='C180'
+          checked={this.state.c180}
+          onPress={() => this.setState({c180: !this.state.c180})}
+        />
+        <CheckBox
+          title='C206'
+          checked={this.state.c206}
+          onPress={() => this.setState({c206: !this.state.c206})}
+        />
+        <CheckBox
+          title='C210'
+          checked={this.state.c210}
+          onPress={() => this.setState({c210: !this.state.c210})}
+        />
+        <CheckBox
+          title='C340'
+          checked={this.state.c340}
+          onPress={() => this.setState({c340: !this.state.c340})}
         />
         <Text>
-          Day Currency:
+          Currency:
         </Text>
-        <Picker
-          selectedValue={this.state.daycurrent}
-          style={{height: 50, width: 100}}
-          onValueChange={(itemValue, itemIndex) =>
-            this.setState({daycurrent: itemValue})
-          }>
-          <Picker.Item label="true" value="true" />
-          <Picker.Item label="false" value="false" />
-        </Picker>
-        <Text>
-          Night Currency:
-        </Text>
-        <Picker
-          selectedValue={this.state.nightcurrent}
-          style={{height: 50, width: 100}}
-          onValueChange={(itemValue, itemIndex) =>
-            this.setState({nightcurrent: itemValue})
-          }>
-          <Picker.Item label="true" value="true" />
-          <Picker.Item label="false" value="false" />
-        </Picker>
+        <CheckBox
+          title='Day Current'
+          checked={this.state.daycurrent}
+          onPress={() => this.setState({daycurrent: !this.state.daycurrent})}
+        />
+        <CheckBox
+          title='Night Current'
+          checked={this.state.nightcurrent}
+          onPress={() => this.setState({nightcurrent: !this.state.nightcurrent})}
+        />
         <Text>
           Check Airman Due:
         </Text>
@@ -612,7 +854,7 @@ class UpdatePilot extends React.Component {
         <View style={styles.container}>
          <View style={styles.alternativeLayoutButtonContainer}>
            <Button
-             title="Update!"
+             title="Submit!"
              onPress={() => this.validateAndFetch()}
            />
 
@@ -625,7 +867,9 @@ class UpdatePilot extends React.Component {
 }
 
 class SeeAllPilots extends React.Component {
-
+  static navigationOptions = {
+    title: 'Pilots',
+  };
 
 
   constructor(props){
@@ -643,12 +887,10 @@ class SeeAllPilots extends React.Component {
       })
       .then((response) => response.json())
       .then((responseJson) => {
-        console.log(responseJson);
         this.setState({
           isLoading: false,
           dataSource: responseJson,
         }, function(){
-          console.log(responseJson)
         });
 
       })
@@ -694,18 +936,46 @@ class SeeAllPilots extends React.Component {
           <View style={styles.container}>
             <View style={styles.alternativeLayoutButtonContainer}>
                 <Text>Name: {item.name}</Text>
-                <Button onPress={() => navigate('UpdatePilot', {id: item._id})} title="Update"/>
-                <Button onPress={() => this.deletePilot(item._id)} title="Delete"/>
-
+                <Button
+                  icon={
+                    <Icon
+                      name = "edit"
+                      type="font-awesome"
+                      />
+                  }
+                  onPress={
+                    () => navigate('UpdatePilot', {id: item._id})
+                  }
+                  title=" Update"
+                />
+                <Button
+                  icon={
+                    <Icon
+                      name = "trash"
+                      type="font-awesome"
+                      />
+                  }
+                  onPress={
+                    () => this.deletePilot(item._id)
+                  }
+                  title=" Delete"
+                />
             </View>
-
           </View>
           }
-          keyExtractor={({id}, index) => id}
+          keyExtractor={(id, index) => index.toString()}
         />
         <Button
-          title="Create New Pilot!"
-          onPress={() => navigate('CreateNewPilot')}
+          icon={
+            <Icon
+              name = "user-plus"
+              type="font-awesome"
+              />
+          }
+          title=" Create New Pilot!"
+          onPress={
+            () => navigate('CreateNewPilot')
+          }
         />
       </View>
     );
